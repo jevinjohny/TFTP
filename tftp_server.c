@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
 
 void handle_client(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, tftp_packet *packet);
 
@@ -14,13 +16,21 @@ int main()
     tftp_packet packet;
 
     // Create UDP socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     // Set socket timeout option
-    // TODO Use setsockopt() to set timeout option
+    struct timeval timeout;
+    timeout.tv_sec = TIMEOUT_SEC;
+    timeout.tv_usec = 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     // Set up server address
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Bind the socket
+    bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
     printf("TFTP Server listening on port %d...\n", PORT);
 

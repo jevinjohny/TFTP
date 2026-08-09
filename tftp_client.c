@@ -71,6 +71,7 @@ void put_file(tftp_client_t *client, char *filename)
 void get_file(tftp_client_t *client, char *filename)
 {
     // Send RRQ and recive file
+    send_request(client->sockfd,client->server_addr,filename,RRQ);
 }
 
 void disconnect(tftp_client_t *client)
