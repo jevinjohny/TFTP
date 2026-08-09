@@ -53,7 +53,7 @@ int main()
         int n = recvfrom(sockfd, &packet, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &client_len);
         if (n < 0)
         {
-            perror("recvfrom");
+            // perror("recvfrom");
             continue;
         }
         printf("Received packet: %d bytes\n", n);
@@ -67,20 +67,34 @@ int main()
 
 void handle_client(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, tftp_packet *packet)
 {
-    // Extract the TFTP operation (read or write) from the received packet
     uint16_t opcode = ntohs(packet->opcode);
-    char *filename = (char *)packet + sizeof(opcode);
-    char *mode = (char *)packet + sizeof(opcode) + strlen(filename) + 1;
 
     if (opcode == RRQ)
     {
+        // Extract the TFTP operation (read or write) from the received packet
+        char *filename = (char *)packet + sizeof(opcode);
+        char *mode = (char *)packet + sizeof(opcode) + strlen(filename) + 1;
+
         printf("RRQ : filename : %s, mode : %s\n", filename, mode);
 
         send_file(sockfd, client_addr, client_len, filename);
     }
     else if (opcode == WRQ)
     {
+        // Extract the TFTP operation (read or write) from the received packet
+        char *filename = (char *)packet + sizeof(opcode);
+        char *mode = (char *)packet + sizeof(opcode) + strlen(filename) + 1;
+
         printf("WRQ : filename : %s, mode : %s\n", filename, mode);
+
+        // send ack
+        uint16_t ack_opcode = htons(ACK);
+        uint16_t ack_block = htons(0);
+        char ack_buffer[4];
+        memcpy(ack_buffer, &ack_opcode, sizeof(ack_opcode));
+        memcpy(ack_buffer + sizeof(ack_opcode), &ack_block, sizeof(ack_block));
+        sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&client_addr, client_len);
+        receive_file(sockfd, client_addr, client_len, filename);
     }
     else
     {
