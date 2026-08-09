@@ -1,4 +1,4 @@
-#include "tftp.h"
+#include "../common/tftp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,17 +12,25 @@ int main()
 {
     int sockfd;
     struct sockaddr_in server_addr, client_addr;
-    socklen_t client_len = sizeof(client_addr);
     tftp_packet packet;
 
     // Create UDP socket
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+    {
+        perror("socket");
+        exit(1);
+    }
 
     // Set socket timeout option
     struct timeval timeout;
     timeout.tv_sec = TIMEOUT_SEC;
     timeout.tv_usec = 0;
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)))
+    {
+        perror("setsockopt");
+        exit(1);
+    }
 
     // Set up server address
     server_addr.sin_family = AF_INET;
@@ -30,19 +38,25 @@ int main()
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
     // Bind the socket
-    bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)))
+    {
+        perror("bind");
+        exit(1);
+    }
 
     printf("TFTP Server listening on port %d...\n", PORT);
 
     // Main loop to handle incoming requests
     while (1)
     {
+        socklen_t client_len = sizeof(client_addr);
         int n = recvfrom(sockfd, &packet, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &client_len);
         if (n < 0)
         {
-            perror("Receive failed or timeout occurred");
+            perror("recvfrom");
             continue;
         }
+        printf("Received packet: %d bytes\n", n);
 
         handle_client(sockfd, client_addr, client_len, &packet);
     }
@@ -64,7 +78,7 @@ void handle_client(int sockfd, struct sockaddr_in client_addr, socklen_t client_
 
         send_file(sockfd, client_addr, client_len, filename);
     }
-    else if (opcode == RRQ)
+    else if (opcode == WRQ)
     {
         printf("WRQ : filename : %s, mode : %s\n", filename, mode);
     }

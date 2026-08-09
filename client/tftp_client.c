@@ -1,4 +1,4 @@
-#include "tftp.h"
+#include "../common/tftp.h"
 #include "tftp_client.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +40,12 @@ void process_command(tftp_client_t *client, char *command)
         int port = atoi(port_str);
         connect_to_server(client, ip, port);
     }
+    else if (strcmp(cmd, "get") == 0)
+    {
+        char *filename = strtok(NULL, " ");
+
+        get_file(client, filename);
+    }
 }
 
 // This function is to initialize socket with given server IP, no packets sent to server in this function
@@ -71,7 +77,8 @@ void put_file(tftp_client_t *client, char *filename)
 void get_file(tftp_client_t *client, char *filename)
 {
     // Send RRQ and recive file
-    send_request(client->sockfd,client->server_addr,filename,RRQ);
+    send_request(client->sockfd, client->server_addr, filename, RRQ);
+    receive_request(client->sockfd, client->server_addr, filename, RRQ);
 }
 
 void disconnect(tftp_client_t *client)
@@ -97,4 +104,64 @@ void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, in
 
 void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode)
 {
+    char buffer[BUFFER_SIZE];
+    socklen_t server_len = sizeof(server_addr);
+
+    uint16_t block_number = 1;
+
+    FILE *fp = fopen(filename, "wb");
+    if (!fp)
+    {
+        perror("fopen");
+        return;
+    }
+
+    while (1)
+    {
+
+        int n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&server_addr, &server_len);
+        if (n < 0)
+        {
+            perror("recvfrom");
+            return;
+        }
+        printf("received %d bytes\n", n);
+
+        // extract opcode
+        uint16_t data_opcode;
+        memcpy(&data_opcode, buffer, sizeof(data_opcode));
+        data_opcode = ntohs(data_opcode);
+
+        // extract
+        uint16_t block;
+        memcpy(&block, buffer + sizeof(data_opcode), sizeof(block));
+        block = ntohs(block);
+
+        // verify
+        if (data_opcode == DATA && block == block_number)
+        {
+
+            size_t datalen = n - (sizeof(data_opcode) + sizeof(block));
+
+            fwrite(buffer + sizeof(data_opcode) + sizeof(block), 1, datalen, fp);
+
+            
+            // creating ack
+            uint16_t ack_opcode = htons(ACK);
+            char ack_buffer[4];
+            memcpy(ack_buffer, &ack_opcode, sizeof(ack_opcode));
+            uint16_t ack_block = htons(block_number);
+            memcpy(ack_buffer + sizeof(ack_opcode), &ack_block, sizeof(ack_block));
+            
+            sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&server_addr, server_len);
+            
+            block_number++;
+            
+            if (datalen < 512)
+            {
+                break;
+            }
+        }
+    }
+    fclose(fp);
 }
