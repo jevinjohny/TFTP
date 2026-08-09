@@ -54,5 +54,24 @@ int main()
 void handle_client(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, tftp_packet *packet)
 {
     // Extract the TFTP operation (read or write) from the received packet
+    uint16_t opcode = ntohs(packet->opcode);
+    char *filename = (char *)packet + sizeof(opcode);
+    char *mode = (char *)packet + sizeof(opcode) + strlen(filename) + 1;
+
+    if (opcode == RRQ)
+    {
+        printf("RRQ : filename : %s, mode : %s\n", filename, mode);
+
+        send_file(sockfd, client_addr, client_len, filename);
+    }
+    else if (opcode == RRQ)
+    {
+        printf("WRQ : filename : %s, mode : %s\n", filename, mode);
+    }
+    else
+    {
+        printf("Unknown\n");
+    }
+
     // and call send_file or receive_file accordingly
 }
