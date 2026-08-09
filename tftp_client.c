@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 int main()
 {
@@ -31,17 +32,27 @@ int main()
 // Function to process commands
 void process_command(tftp_client_t *client, char *command)
 {
-    
 }
 
 // This function is to initialize socket with given server IP, no packets sent to server in this function
 void connect_to_server(tftp_client_t *client, char *ip, int port)
 {
+    // TODO: ERROR CHECKING
+
     // Create UDP socket
+    client->sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
     // Set socket timeout option
+    struct timeval timeout;
+    timeout.tv_sec = TIMEOUT_SEC;
+    timeout.tv_usec = 0;
+    setsockopt(client->sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     // Set up server address
+    client->server_addr.sin_family = AF_INET;
+    client->server_addr.sin_port = htons(port);
+    inet_pton(AF_INET, ip, &client->server_addr.sin_addr);
+    client->server_len = sizeof(client->server_addr);
 }
 
 void put_file(tftp_client_t *client, char *filename)
@@ -61,10 +72,8 @@ void disconnect(tftp_client_t *client)
 
 void send_request(int sockfd, sockaddr_in server_addr, char *filename, int opcode)
 {
-
 }
 
 void receive_request(int sockfd, sockaddr_in server_addr, char *filename, int opcode)
 {
-
 }
