@@ -52,6 +52,10 @@ void process_command(tftp_client_t *client, char *command)
 
         put_file(client, filename);
     }
+    else if (strcmp(cmd, "disconnect") == 0)
+    {
+        disconnect(client);
+    }
 }
 
 // This function is to initialize socket with given server IP, no packets sent to server in this function
@@ -207,6 +211,11 @@ void get_file(tftp_client_t *client, char *filename)
 void disconnect(tftp_client_t *client)
 {
     // close fd
+    if (client->sockfd >= 0) // checks whether socket is valid or initialised
+    {
+        close(client->sockfd);
+        client->sockfd = -1; // make it uninitialised
+    }
 }
 
 void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode)
@@ -275,7 +284,7 @@ void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename,
             memcpy(ack_buffer + sizeof(ack_opcode), &ack_block, sizeof(ack_block));
 
             sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&server_addr, server_len);
-            
+
             if (datalen < 512)
             {
                 break;
