@@ -32,6 +32,14 @@ int main()
 // Function to process commands
 void process_command(tftp_client_t *client, char *command)
 {
+    char *cmd = strtok(command, " ");
+    if (strcmp(cmd, "connect") == 0)
+    {
+        char *ip = strtok(NULL, " ");
+        char *port_str = strtok(NULL, " ");
+        int port = atoi(port_str);
+        connect_to_server(client, ip, port);
+    }
 }
 
 // This function is to initialize socket with given server IP, no packets sent to server in this function
