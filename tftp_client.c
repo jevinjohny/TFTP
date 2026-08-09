@@ -78,10 +78,22 @@ void disconnect(tftp_client_t *client)
     // close fd
 }
 
-void send_request(int sockfd, sockaddr_in server_addr, char *filename, int opcode)
+void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode)
 {
+    char buffer[BUFFER_SIZE];
+
+    // convert the opcode to network byte order
+    uint16_t net_opcode = htons(opcode);
+
+    memcpy(buffer, &net_opcode, sizeof(net_opcode));
+    strcpy(buffer + sizeof(net_opcode), filename);
+    strcpy(buffer + sizeof(net_opcode) + strlen(filename) + 1, "octet");
+
+    size_t packet_len = sizeof(net_opcode) + strlen(filename) + 1 + strlen("octet") + 1;
+
+    sendto(sockfd, buffer, packet_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
 }
 
-void receive_request(int sockfd, sockaddr_in server_addr, char *filename, int opcode)
+void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode)
 {
 }
