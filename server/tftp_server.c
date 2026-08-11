@@ -77,7 +77,7 @@ void handle_client(int sockfd, struct sockaddr_in client_addr, socklen_t client_
 
         printf("RRQ : filename : %s, mode : %s\n", filename, mode);
 
-        send_file(sockfd, client_addr, client_len, filename);
+        send_file(sockfd, client_addr, client_len, filename, mode);
     }
     else if (opcode == WRQ)
     {

@@ -17,6 +17,6 @@ void disconnect(tftp_client_t *client);
 void process_command(tftp_client_t *client, char *command);
 
 void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode, char *mode);
-void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode);
+void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode, char *mode);
 
 #endif

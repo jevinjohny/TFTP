@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
-void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename)
+void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename, char *mode)
 {
     // Implement file sending logic here
     int fd = open(filename, O_RDONLY);
@@ -20,7 +20,17 @@ void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len,
         return;
     }
 
-    char data[512];
+    int size;
+    if (strcmp(mode, "default") == 0)
+    {
+        size = 512;
+    }
+    else if (strcmp(mode, "octet") == 0)
+    {
+        size = 1;
+    }
+    char data[size];
+
     uint16_t block_number = 1;
     while (1)
     {

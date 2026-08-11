@@ -48,7 +48,7 @@ typedef struct
     } body;
 } tftp_packet;
 
-void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename);
+void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename, char *mode);
 void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename, char *mode);
 
 #endif // TFTP_H

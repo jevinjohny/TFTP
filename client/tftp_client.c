@@ -257,7 +257,7 @@ void get_file(tftp_client_t *client, char *filename, char *mode)
 {
     // Send RRQ and recive file
     send_request(client->sockfd, client->server_addr, filename, RRQ, mode);
-    receive_request(client->sockfd, client->server_addr, filename, RRQ);
+    receive_request(client->sockfd, client->server_addr, filename, RRQ, mode);
 }
 
 void disconnect(tftp_client_t *client)
@@ -266,6 +266,7 @@ void disconnect(tftp_client_t *client)
     if (client->sockfd >= 0) // checks whether socket is valid or initialised
     {
         close(client->sockfd);
+        printf("cient disconnected\n");
         client->sockfd = -1; // make it uninitialised
     }
 }
@@ -286,7 +287,7 @@ void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, in
     sendto(sockfd, buffer, packet_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
 }
 
-void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode)
+void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode, char *mode)
 {
     char buffer[BUFFER_SIZE];
     socklen_t server_len = sizeof(server_addr);
@@ -344,9 +345,15 @@ void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename,
 
             sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&server_addr, server_len);
 
-            if (datalen < 512)
+            if (strcmp(mode, "default") == 0)
             {
-                break;
+                if (datalen < 512)
+                    break;
+            }
+            else if (strcmp(mode, "octet") == 0)
+            {
+                if (datalen < 1)
+                    break;
             }
             block_number++;
         }
