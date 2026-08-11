@@ -46,13 +46,48 @@ void process_command(tftp_client_t *client, char *command)
     {
         char *filename = strtok(NULL, " ");
 
-        get_file(client, filename);
+        char *mode = strtok(NULL, " ");
+
+        char mode_buffer[15];
+
+        if (mode == NULL)
+        {
+            strcpy(mode_buffer, "default");
+        }
+        else if (strcmp(mode, "default") != 0 && strcmp(mode, "octet") != 0 && strcmp(mode, "netascii") != 0)
+        {
+            printf("Unknown mode\n");
+            exit(1);
+        }
+        else
+        {
+            strcpy(mode_buffer, mode);
+        }
+
+        get_file(client, filename, mode_buffer);
     }
     else if (strcmp(cmd, "put") == 0)
     {
         char *filename = strtok(NULL, " ");
 
-        put_file(client, filename);
+        char *mode = strtok(NULL, " ");
+
+        char mode_buffer[15];
+
+        if (mode == NULL)
+        {
+            strcpy(mode_buffer, "default");
+        }
+        else if (strcmp(mode, "default") != 0 && strcmp(mode, "octet") != 0 && strcmp(mode, "netascii") != 0)
+        {
+            printf("Unknown mode\n");
+            exit(1);
+        }
+        else
+        {
+            strcpy(mode_buffer, mode);
+        }
+        put_file(client, filename, mode_buffer);
     }
     else if (strcmp(cmd, "disconnect") == 0)
     {
@@ -81,10 +116,10 @@ void connect_to_server(tftp_client_t *client, char *ip, int port)
     client->server_len = sizeof(client->server_addr);
 }
 
-void put_file(tftp_client_t *client, char *filename)
+void put_file(tftp_client_t *client, char *filename, char *mode)
 {
     // Send WRQ request and send file
-    send_request(client->sockfd, client->server_addr, filename, WRQ);
+    send_request(client->sockfd, client->server_addr, filename, WRQ, mode);
 
     // extract and verify ack
     char ack_buffer[4];
@@ -130,7 +165,16 @@ void put_file(tftp_client_t *client, char *filename)
     }
     uint16_t block_number = 1;
 
-    char data[512];
+    int size;
+    if (strcmp(mode, "default") == 0)
+    {
+        size = 512;
+    }
+    else if (strcmp(mode, "octet") == 0)
+    {
+        size = 1;
+    }
+    char data[size];
 
     while (1)
     {
@@ -209,10 +253,10 @@ void put_file(tftp_client_t *client, char *filename)
     close(fd);
 }
 
-void get_file(tftp_client_t *client, char *filename)
+void get_file(tftp_client_t *client, char *filename, char *mode)
 {
     // Send RRQ and recive file
-    send_request(client->sockfd, client->server_addr, filename, RRQ);
+    send_request(client->sockfd, client->server_addr, filename, RRQ, mode);
     receive_request(client->sockfd, client->server_addr, filename, RRQ);
 }
 
@@ -226,7 +270,7 @@ void disconnect(tftp_client_t *client)
     }
 }
 
-void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode)
+void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, int opcode, char *mode)
 {
     char buffer[BUFFER_SIZE];
 
@@ -235,9 +279,9 @@ void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, in
 
     memcpy(buffer, &net_opcode, sizeof(net_opcode));
     strcpy(buffer + sizeof(net_opcode), filename);
-    strcpy(buffer + sizeof(net_opcode) + strlen(filename) + 1, "default");
+    strcpy(buffer + sizeof(net_opcode) + strlen(filename) + 1, mode);
 
-    size_t packet_len = sizeof(net_opcode) + strlen(filename) + 1 + strlen("default") + 1;
+    size_t packet_len = sizeof(net_opcode) + strlen(filename) + 1 + strlen(mode) + 1;
 
     sendto(sockfd, buffer, packet_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
 }

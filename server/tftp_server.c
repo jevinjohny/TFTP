@@ -94,7 +94,7 @@ void handle_client(int sockfd, struct sockaddr_in client_addr, socklen_t client_
         memcpy(ack_buffer, &ack_opcode, sizeof(ack_opcode));
         memcpy(ack_buffer + sizeof(ack_opcode), &ack_block, sizeof(ack_block));
         sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&client_addr, client_len);
-        receive_file(sockfd, client_addr, client_len, filename);
+        receive_file(sockfd, client_addr, client_len, filename, mode);
     }
     else
     {

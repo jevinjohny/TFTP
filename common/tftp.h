@@ -29,8 +29,8 @@ typedef struct
         struct
         {
             char filename[256];
-            char mode[8]; 
-        } request;        // RRQ and WRQ
+            char mode[8];
+        } request; // RRQ and WRQ
         struct
         {
             uint16_t block_number;
@@ -49,6 +49,6 @@ typedef struct
 } tftp_packet;
 
 void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename);
-void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename);
+void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename, char *mode);
 
 #endif // TFTP_H

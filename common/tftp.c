@@ -75,7 +75,7 @@ void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len,
     close(fd);
 }
 
-void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename)
+void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename, char *mode)
 {
     // Implement file receiving logic here
     int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -131,9 +131,15 @@ void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_l
 
             sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&client_addr, client_len);
 
-            if (datalen < 512)
+            if (strcmp(mode, "default") == 0)
             {
-                break;
+                if (datalen < 512)
+                    break;
+            }
+            else if (strcmp(mode, "octet") == 0)
+            {
+                if (datalen < 1)
+                    break;
             }
             block_number++;
         }
