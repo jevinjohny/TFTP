@@ -7,15 +7,16 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <fcntl.h>
 
 void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename)
 {
     // Implement file sending logic here
-    FILE *fp = fopen(filename, "rb");
+    int fd = open(filename, O_RDONLY);
 
-    if (!fp)
+    if (fd < 0)
     {
-        perror("fopen");
+        perror("open");
         return;
     }
 
@@ -23,7 +24,14 @@ void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len,
     uint16_t block_number = 1;
     while (1)
     {
-        size_t n = fread(data, 1, sizeof(data), fp);
+        ssize_t n = read(fd, data, sizeof(data));
+
+        if (n < 0)
+        {
+            perror("read");
+            close(fd);
+            return;
+        }
 
         char buffer[BUFFER_SIZE];
 
@@ -59,26 +67,27 @@ void send_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len,
                 printf("Block %d is acknowleged\n", block_number);
             }
         }
-        if (n < sizeof(data))
-        break;
+        if (n < (ssize_t)sizeof(data))
+            break;
 
         block_number++;
     }
+    close(fd);
 }
 
 void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_len, char *filename)
 {
     // Implement file receiving logic here
-    FILE *fp = fopen(filename, "wb");
+    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
-    if (!fp)
+    if (fd < 0)
     {
         perror("fopen");
         return;
     }
     uint16_t block_number = 1;
     char buffer[BUFFER_SIZE];
-    
+
     while (1)
     {
         int n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *)&client_addr, &client_len);
@@ -104,7 +113,14 @@ void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_l
         {
             size_t datalen = n - (sizeof(data_opcode) + sizeof(block));
 
-            fwrite(buffer + sizeof(data_opcode) + sizeof(block), 1, datalen, fp);
+            int val = write(fd, buffer + sizeof(data_opcode) + sizeof(block), datalen);
+
+            if (val < 0)
+            {
+                perror("write");
+                close(fd);
+                return;
+            }
 
             // creating ack
             uint16_t ack_opcode = htons(ACK);
@@ -114,7 +130,7 @@ void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_l
             memcpy(ack_buffer + sizeof(ack_opcode), &ack_block, sizeof(ack_block));
 
             sendto(sockfd, ack_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&client_addr, client_len);
-            
+
             if (datalen < 512)
             {
                 break;
@@ -122,5 +138,5 @@ void receive_file(int sockfd, struct sockaddr_in client_addr, socklen_t client_l
             block_number++;
         }
     }
-    fclose(fp);
+    close(fd);
 }

@@ -29,7 +29,7 @@ typedef struct
         struct
         {
             char filename[256];
-            char mode[8]; // Typically "octet"
+            char mode[8]; 
         } request;        // RRQ and WRQ
         struct
         {

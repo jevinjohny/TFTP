@@ -6,12 +6,14 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <fcntl.h>
 
 int main()
 {
     char command[256];
     tftp_client_t client;
     memset(&client, 0, sizeof(client)); // Initialize client structure
+    client.sockfd = -1;
 
     // Main loop for command-line interface
     while (1)
@@ -119,11 +121,11 @@ void put_file(tftp_client_t *client, char *filename)
         return;
     }
 
-    FILE *fp = fopen(filename, "rb");
+    int fd = open(filename, O_RDONLY);
 
-    if (!fp)
+    if (fd < 0)
     {
-        perror("fopen");
+        perror("open");
         return;
     }
     uint16_t block_number = 1;
@@ -143,7 +145,13 @@ void put_file(tftp_client_t *client, char *filename)
         memcpy(data_buffer + sizeof(data_opcode), &block, sizeof(block));
 
         // read data from the file and copy to the data buffer
-        int data_len = fread(data, 1, sizeof(data), fp);
+        ssize_t data_len = read(fd, data, sizeof(data));
+        if (data_len < 0)
+        {
+            perror("read");
+            close(fd);
+            return;
+        }
         memcpy(data_buffer + sizeof(data_opcode) + sizeof(block), data, data_len);
 
         // send the data buffer
@@ -160,13 +168,13 @@ void put_file(tftp_client_t *client, char *filename)
         if (ack_len < 0)
         {
             perror("recevfrom");
-            fclose(fp);
+            close(fd);
             return;
         }
         if (ack_len != 4)
         {
             printf("Invalid ack length\n");
-            fclose(fp);
+            close(fd);
             return;
         }
 
@@ -187,18 +195,18 @@ void put_file(tftp_client_t *client, char *filename)
         else
         {
             printf("Invalid ack\n");
-            fclose(fp);
+            close(fd);
             return;
         }
 
         // last packet
-        if (data_len < sizeof(data)) // n<512 for octect
+        if (data_len < (ssize_t)sizeof(data)) // n<512 for default
         {
             break;
         }
         block_number++;
     }
-    fclose(fp);
+    close(fd);
 }
 
 void get_file(tftp_client_t *client, char *filename)
@@ -227,9 +235,9 @@ void send_request(int sockfd, struct sockaddr_in server_addr, char *filename, in
 
     memcpy(buffer, &net_opcode, sizeof(net_opcode));
     strcpy(buffer + sizeof(net_opcode), filename);
-    strcpy(buffer + sizeof(net_opcode) + strlen(filename) + 1, "octet");
+    strcpy(buffer + sizeof(net_opcode) + strlen(filename) + 1, "default");
 
-    size_t packet_len = sizeof(net_opcode) + strlen(filename) + 1 + strlen("octet") + 1;
+    size_t packet_len = sizeof(net_opcode) + strlen(filename) + 1 + strlen("default") + 1;
 
     sendto(sockfd, buffer, packet_len, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
 }
@@ -241,10 +249,10 @@ void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename,
 
     uint16_t block_number = 1;
 
-    FILE *fp = fopen(filename, "wb");
-    if (!fp)
+    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0)
     {
-        perror("fopen");
+        perror("open");
         return;
     }
 
@@ -255,6 +263,7 @@ void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename,
         if (n < 0)
         {
             perror("recvfrom");
+            close(fd);
             return;
         }
         printf("received %d bytes\n", n);
@@ -274,7 +283,13 @@ void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename,
         {
             size_t datalen = n - (sizeof(data_opcode) + sizeof(block));
 
-            fwrite(buffer + sizeof(data_opcode) + sizeof(block), 1, datalen, fp);
+            int val = write(fd, buffer + sizeof(data_opcode) + sizeof(block), datalen);
+            if (val < 0)
+            {
+                perror("write");
+                close(fd);
+                return;
+            }
 
             // creating ack
             uint16_t ack_opcode = htons(ACK);
@@ -292,5 +307,5 @@ void receive_request(int sockfd, struct sockaddr_in server_addr, char *filename,
             block_number++;
         }
     }
-    fclose(fp);
+    close(fd);
 }
